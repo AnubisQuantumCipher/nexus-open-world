@@ -1,0 +1,53 @@
+name: Bootstrap NEXUS ship
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download and extract ship zip
+        run: |
+          set -euo pipefail
+          curl -fsSL -o /tmp/nexus.zip "https://files.catbox.moe/ng1s79.zip"
+          ls -lh /tmp/nexus.zip
+          rm -rf /tmp/nexus-extract
+          mkdir -p /tmp/nexus-extract
+          unzip -q /tmp/nexus.zip -d /tmp/nexus-extract
+          find /tmp/nexus-extract -maxdepth 3 -type f | head -50
+          # Zip root is NEXUS-SHIP/
+          SRC="/tmp/nexus-extract/NEXUS-SHIP"
+          if [ ! -d "$SRC" ]; then
+            SRC="/tmp/nexus-extract"
+          fi
+          # Copy ship files into repo root (preserve existing .github)
+          rsync -a "$SRC"/ ./
+          # Ensure Pages helper
+          touch .nojekyll
+          test -f index.html
+          test -f game.js
+          test -f style.css
+          test -f assets/nexus-title-sketch.jpg
+          wc -c index.html style.css game.js
+          ls -la assets | head -30
+
+      - name: Commit and push full ship
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git status
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "Ship complete NEXUS Open World Unlimited build"
+          git push origin HEAD:main
