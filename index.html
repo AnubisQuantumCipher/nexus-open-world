@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>NEXUS — Open World Unlimited</title>
+  <meta name="description" content="NEXUS — free browser open-world game. Explore, build, race, fight, and level up." />
+  <meta name="theme-color" content="#0a0a14" />
+  <meta property="og:title" content="NEXUS — Open World Unlimited" />
+  <meta property="og:description" content="Free browser open-world: free roam, combat, racing, build, quests." />
+  <meta property="og:type" content="website" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="NEXUS" />
+
+  <link rel="stylesheet" href="style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+<script>
+// Show a visible error if the game fails to load (instead of a blank screen)
+window.addEventListener('error', function (e) {
+  if (window.__nexus) return;
+  var el = document.getElementById('nexus-boot-error');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'nexus-boot-error';
+    el.setAttribute('style',
+      'position:fixed;inset:0;z-index:99999;background:#0a0a14;color:#fff;font:16px/1.5 system-ui,sans-serif;'
+      + 'display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;');
+    document.body.appendChild(el);
+  }
+  el.innerHTML = '<div style="max-width:520px"><h1 style="color:#00f5d4;margin:0 0 12px;font-family:system-ui">NEXUS failed to load</h1>'
+    + '<p style="color:#9aa3c7;margin:0 0 16px">Something broke while starting the game.</p>'
+    + '<pre style="text-align:left;background:#151528;padding:12px;border-radius:8px;color:#ff8fab;white-space:pre-wrap;font-size:12px">'
+    + String(e.message || e).replace(/</g,'&lt;') + '\n' + String(e.filename||'') + ':' + (e.lineno||'')
+    + '</pre><p style="margin-top:16px;color:#9aa3c7">Hard-refresh: Cmd+Shift+R</p></div>';
+});
+window.addEventListener('unhandledrejection', function (e) {
+  window.dispatchEvent(new ErrorEvent('error', { message: String(e.reason && (e.reason.stack || e.reason) || e) }));
+});
+</script>
+
+  <!-- Boot / Title — YOUR drawing, unchanged -->
+  <div id="title-screen">
+    <div class="title-bg"></div>
+    <div class="title-content title-sketch">
+      <img
+        class="nexus-title-art"
+        src="assets/nexus-title-sketch.jpg"
+        alt="NEXUS"
+        width="640"
+        height="800"
+      />
+      <button id="play-btn" class="mega-btn sketch-play">▶ PLAY</button>
+      <p class="hint-bottom">Click to lock mouse · ESC to pause</p>
+    </div>
+  </div>
+
+  <!-- Game canvas host -->
+  <div id="game-root" class="hidden">
+    <canvas id="c"></canvas>
+
+    <!-- Crosshair -->
+    <div id="crosshair">
+      <span class="ch-h"></span>
+      <span class="ch-v"></span>
+      <span class="ch-dot"></span>
+    </div>
+
+    <!-- In-game top-left HUD: Settings + Leaderboard -->
+    <div id="hud-top-left">
+      <button type="button" id="settings-btn" title="Settings (O)" aria-label="Settings">
+        <span class="settings-gear">⚙</span>
+        <span class="settings-label">SETTINGS</span>
+      </button>
+      <button type="button" id="leaderboard-btn" title="Leaderboard" aria-label="Leaderboard">
+        <span class="lb-icon">🏆</span>
+        <span class="lb-label">LEADERBOARD</span>
+      </button>
+      <div id="mode-pill">AFK</div>
+    </div>
+
+    <!-- Leaderboard panel -->
+    <div id="leaderboard-panel" class="hidden" role="dialog" aria-labelledby="lb-title">
+      <div class="lb-card">
+        <div class="lb-header">
+          <h2 id="lb-title">🏆 LEADERBOARD</h2>
+          <button type="button" id="leaderboard-close" class="settings-x" aria-label="Close">✕</button>
+        </div>
+        <p class="lb-sub">Top wins · talk to Lucas on Snow Dome</p>
+        <div id="lb-list" class="lb-list"></div>
+        <button type="button" id="leaderboard-done" class="mega-btn small">CLOSE</button>
+      </div>
+    </div>
+
+    <!-- Character / form (left) — RON or F lion -->
+    <div id="char-wheel" aria-label="Character forms">
+      <div class="char-wheel-title">FORMS</div>
+      <div class="char-wheel-ring">
+        <button type="button" class="char-slot selected" data-char="ron" id="char-ron" title="Ron">
+          <span class="char-face ron-face" aria-hidden="true">
+            <span class="cf-hair"></span>
+            <span class="cf-skin"></span>
+            <span class="cf-eye l"></span>
+            <span class="cf-eye r"></span>
+            <span class="cf-smile"></span>
+          </span>
+          <span class="char-name">RON</span>
+        </button>
+        <button type="button" class="char-slot" data-char="tiger" id="char-tiger" title="Lion (F)">
+          <span class="char-face tiger-face" aria-hidden="true">
+            <span class="cf-hair"></span>
+            <span class="cf-skin"></span>
+            <span class="cf-eye l"></span>
+            <span class="cf-eye r"></span>
+            <span class="cf-smile"></span>
+          </span>
+          <span class="char-name">LION</span>
+        </button>
+      </div>
+      <div class="char-wheel-hint"><kbd>F</kbd> lion · <kbd>G</kbd> roar · <kbd>Space</kbd> jump</div>
+    </div>
+
+    <!-- Settings panel (in-game overlay) -->
+    <div id="settings-panel" class="hidden" role="dialog" aria-labelledby="settings-title">
+      <div class="settings-card">
+        <div class="settings-header">
+          <h2 id="settings-title">SETTINGS</h2>
+          <button type="button" id="settings-close" class="settings-x" aria-label="Close">✕</button>
+        </div>
+
+        <!-- Game mode options -->
+        <div class="settings-section-title">OPTIONS</div>
+        <div class="mode-options" role="radiogroup" aria-label="Game mode">
+          <button type="button" class="mode-card selected" data-mode="afk" id="mode-afk">
+            <span class="mode-name">AFK</span>
+            <span class="mode-desc">Chill mode. Monsters will not attack you.</span>
+          </button>
+          <button type="button" class="mode-card" data-mode="survival" id="mode-survival">
+            <span class="mode-name">SURVIVAL</span>
+            <span class="mode-desc">Monsters hunt you. Protect yourself and fight back.</span>
+          </button>
+        </div>
+        <p id="mode-status" class="mode-status">Mode: <strong>AFK</strong> — monsters are peaceful</p>
+
+        <div class="settings-section-title">CONTROLS &amp; DISPLAY</div>
+
+        <div class="settings-row">
+          <label for="set-sensitivity">Mouse sensitivity</label>
+          <div class="settings-control">
+            <input type="range" id="set-sensitivity" min="0.4" max="2.5" step="0.1" value="1" />
+            <span id="set-sensitivity-val">1.0</span>
+          </div>
+        </div>
+
+        <div class="settings-row">
+          <label for="set-graphics">Graphics</label>
+          <select id="set-graphics">
+            <option value="low">Low (fastest)</option>
+            <option value="medium" selected>Medium</option>
+            <option value="high">High</option>
+          </select>
+        </div>
+
+        <div class="settings-row toggle-row">
+          <label for="set-quests">Show quests</label>
+          <input type="checkbox" id="set-quests" checked />
+        </div>
+
+        <div class="settings-row toggle-row">
+          <label for="set-controls">Show controls help</label>
+          <input type="checkbox" id="set-controls" checked />
+        </div>
+
+        <div class="settings-row toggle-row">
+          <label for="set-minimap">Show minimap</label>
+          <input type="checkbox" id="set-minimap" checked />
+        </div>
+
+        <div class="settings-row toggle-row">
+          <label for="set-inverty">Invert look Y</label>
+          <input type="checkbox" id="set-inverty" />
+        </div>
+
+        <div class="settings-section-title">WEATHER</div>
+        <div class="mode-options weather-options" role="radiogroup" aria-label="Weather">
+          <button type="button" class="mode-card weather-card selected" data-weather="spring" id="weather-spring">
+            <span class="mode-name">🌸 SPRING</span>
+            <span class="mode-desc">Soft light, petals, and calm skies.</span>
+          </button>
+          <button type="button" class="mode-card weather-card" data-weather="thunder" id="weather-thunder">
+            <span class="mode-name">⚡ THUNDER</span>
+            <span class="mode-desc">Dark clouds, rain, and lightning.</span>
+          </button>
+          <button type="button" class="mode-card weather-card" data-weather="snow" id="weather-snow">
+            <span class="mode-name">❄️ SNOW</span>
+            <span class="mode-desc">Cold air and falling snowflakes.</span>
+          </button>
+        </div>
+        <p id="weather-status" class="mode-status">Weather: <strong>Spring</strong></p>
+
+        <p class="settings-hint">Changes save on this device. Click outside or press Esc to close.</p>
+        <button type="button" id="settings-done" class="mega-btn small">DONE</button>
+      </div>
+    </div>
+
+    <!-- Top HUD -->
+    <div id="hud-top">
+      <div class="stat-card level-card">
+        <div class="stat-label">LEVEL</div>
+        <div id="hud-level" class="stat-value">1</div>
+        <div class="xp-bar"><div id="xp-fill"></div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">GREEN COINS</div>
+        <div id="hud-coins" class="stat-value" style="color:#4ade80">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">💜 GEMS</div>
+        <div id="hud-gems" class="stat-value cyan">0💜 · 0💎</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">STREAK</div>
+        <div id="hud-streak" class="stat-value hot">0</div>
+      </div>
+    </div>
+
+    <!-- Mode banner -->
+    <div id="mode-banner">FREE ROAM</div>
+
+    <!-- Health / ammo bottom left -->
+    <div id="hud-bottom-left">
+      <div class="bar-wrap">
+        <div class="bar-label">HP</div>
+        <div class="bar health"><div id="hp-fill"></div></div>
+        <div id="hp-text">100</div>
+      </div>
+      <div class="bar-wrap hidden" id="ammo-wrap">
+        <div class="bar-label">AMMO</div>
+        <div class="bar ammo"><div id="ammo-fill"></div></div>
+        <div id="ammo-text">—</div>
+      </div>
+      <div id="weapon-name">HANDS / BLOCKS</div>
+    </div>
+
+    <!-- Speed / vehicle bottom right -->
+    <div id="hud-bottom-right">
+      <div id="speedo" class="hidden">
+        <div id="speed-num">0</div>
+        <div class="speed-unit">KM/H</div>
+      </div>
+      <div id="minimap-frame">
+        <canvas id="minimap" width="200" height="200"></canvas>
+        <div class="minimap-label">SOLAR SYSTEM</div>
+      </div>
+    </div>
+
+    <!-- Inventory (I) — blue panel on the left · fidget powers forever -->
+    <div id="inventory-panel" class="hidden" role="dialog" aria-labelledby="inv-title">
+      <div class="inv-card">
+        <div class="inv-header">
+          <h2 id="inv-title">INVENTORY</h2>
+          <span class="inv-count" id="inv-count-badge">0</span>
+          <button type="button" id="inv-close" class="settings-x" aria-label="Close">✕</button>
+        </div>
+        <p class="inv-sub">Only items <b>you bought</b> appear here — forever. Click to equip. Click OFF to put away (leaves your hand, stays saved).</p>
+        <div id="inv-grid"></div>
+        <p id="inv-empty-hint" class="inv-empty">Empty — buy fidgets at the AVENGERS SERVER hangar plaza (green coins). Nothing free!</p>
+        <p class="inv-hint"><kbd>I</kbd> close · shop: buy each · Water Dino: <kbd>G</kbd> power 2</p>
+      </div>
+    </div>
+
+    <!-- Quest panel -->
+    <div id="quest-panel">
+      <div class="quest-title">⚡ ACTIVE QUESTS</div>
+      <ul id="quest-list"></ul>
+    </div>
+
+    <!-- Kill feed / toasts -->
+    <div id="toast-stack"></div>
+    <div id="combo-display" class="hidden">COMBO x<span id="combo-num">2</span></div>
+    <div id="levelup-flash" class="hidden">LEVEL UP!</div>
+
+    <!-- Interaction prompt -->
+    <div id="interact-prompt" class="hidden">Press <kbd>E</kbd> to interact</div>
+
+    <!-- Spider-Man mini-game HUD -->
+    <div id="spider-hud" class="hidden">
+      <div class="spider-hud-card">
+        <div class="spider-title">🐦 YOU vs RED HULK · SPIDER-MAN · VENOM · CAP</div>
+        <div class="spider-hint">Click = fight · Y = friends/talk/powers · F = webs · HOME</div>
+        <button type="button" id="spider-home-btn" class="spider-home">HOME</button>
+      </div>
+    </div>
+
+    <!-- Sleep button (ZZZ) -->
+    <button type="button" id="sleep-btn" title="Sleep (Z)">😴 ZZZ</button>
+
+    <!-- Calendar button (M) -->
+    <button type="button" id="calendar-btn" title="Calendar (M)">📅 M</button>
+
+    <!-- Calendar panel — July through December -->
+    <div id="calendar-panel" class="hidden" role="dialog" aria-labelledby="cal-title">
+      <div class="cal-card">
+        <div class="cal-header">
+          <h2 id="cal-title">CALENDAR</h2>
+          <div id="cal-date-big">July 18, 2026</div>
+          <button type="button" id="cal-close" class="settings-x" aria-label="Close">✕</button>
+        </div>
+        <div id="cal-year-label">Year <span id="cal-year">2026</span> · July–December</div>
+        <div id="cal-months"></div>
+        <p class="cal-hint">Sleep (Z / ZZZ) advances one day. July → Dec. Dec 31 → next July.</p>
+      </div>
+    </div>
+
+    <!-- Michael rocket: BUY vs TRY -->
+    <div id="rocket-offer" class="hidden">
+      <div class="rocket-offer-card">
+        <h2>🚀 IRON MAN ROCKET</h2>
+        <p class="rocket-offer-sub">Two options only — pick one</p>
+        <div class="rocket-offer-actions">
+          <button type="button" id="rocket-buy-btn" class="rocket-choice buy">
+            <span class="choice-title">BUY</span>
+            <span class="choice-desc">Keep forever · green coins (real money)</span>
+            <span class="choice-key">Press B</span>
+          </button>
+          <button type="button" id="rocket-try-btn" class="rocket-choice try">
+            <span class="choice-title">TRY</span>
+            <span class="choice-desc">Free 20 seconds · then bring it back</span>
+            <span class="choice-key">Press T</span>
+          </button>
+        </div>
+        <button type="button" id="rocket-offer-cancel" class="rocket-cancel">Cancel (N)</button>
+      </div>
+    </div>
+
+    <!-- Fidget shop — TRY free 30s · BUY with green coins · only buys stay forever -->
+    <div id="nifty-offer" class="hidden">
+      <div class="rocket-offer-card nifty-offer-card">
+        <h2>💎 FIDGET SHOP</h2>
+        <p class="rocket-offer-sub">Ends <b>November</b> · <b>TRY free 30s</b> · <b>BUY</b> with green coins to keep forever</p>
+        <p class="nifty-coins-line">Your green coins: <b id="nifty-your-coins">0</b> 🟢</p>
+        <div class="fidget-shop-grid">
+          <div class="fidget-shop-row">
+            <button type="button" id="try-fidget-nifty" class="rocket-choice try" data-fidget="nifty">
+              <span class="choice-title">TRY FREE 30s</span>
+              <span class="choice-desc">Nifty Fidget Power</span>
+              <span class="choice-key">T</span>
+            </button>
+            <button type="button" id="buy-fidget-nifty" class="rocket-choice buy" data-fidget="nifty">
+              <span class="choice-title">BUY NIFTY</span>
+              <span class="choice-desc">250 green coins · keep forever · + Hat Power</span>
+              <span class="choice-key">250 🟢</span>
+            </button>
+          </div>
+          <div class="fidget-shop-row">
+            <button type="button" id="try-fidget-venom" class="rocket-choice try" data-fidget="venom">
+              <span class="choice-title">TRY FREE 30s</span>
+              <span class="choice-desc">Venom</span>
+              <span class="choice-key">T</span>
+            </button>
+            <button type="button" id="buy-fidget-venom" class="rocket-choice buy" data-fidget="venom">
+              <span class="choice-title">BUY VENOM</span>
+              <span class="choice-desc">300 green coins · keep forever</span>
+              <span class="choice-key">300 🟢</span>
+            </button>
+          </div>
+          <div class="fidget-shop-row">
+            <button type="button" id="try-fidget-waterdino" class="rocket-choice try" data-fidget="waterdino">
+              <span class="choice-title">TRY FREE 30s</span>
+              <span class="choice-desc">Water Dino + dinosaur</span>
+              <span class="choice-key">T</span>
+            </button>
+            <button type="button" id="buy-fidget-waterdino" class="rocket-choice buy" data-fidget="waterdino">
+              <span class="choice-title">BUY WATER DINO</span>
+              <span class="choice-desc">400 green coins · keep forever · 2 powers</span>
+              <span class="choice-key">400 🟢</span>
+            </button>
+          </div>
+        </div>
+        <button type="button" id="nifty-offer-cancel" class="rocket-cancel">Close shop (N)</button>
+      </div>
+    </div>
+
+    <!-- Free fidget try timer (30s) -->
+    <div id="fidget-trial" class="hidden">
+      <div class="rocket-trial-card">
+        <div class="trial-label">FREE TRY</div>
+        <div class="trial-time"><span id="fidget-trial-time">30</span>s</div>
+        <p class="trial-hint"><span id="fidget-trial-name">Fidget</span> · then gone unless you BUY with 🟢</p>
+        <button type="button" id="fidget-trial-done" class="rocket-done-btn">DONE</button>
+      </div>
+    </div>
+
+    <!-- Michael 102s joyride timer -->
+    <div id="michael-joyride" class="hidden">
+      <div class="michael-joyride-card">
+        <div class="trial-label">MICHAEL FLYING</div>
+        <div class="trial-time"><span id="michael-joyride-time">102</span>s</div>
+        <p class="trial-hint">Michael Builder is driving the Iron Man rocket</p>
+      </div>
+    </div>
+
+    <!-- Free try timer + Done -->
+    <div id="rocket-trial" class="hidden">
+      <div class="rocket-trial-card">
+        <div class="trial-label">FREE TRY</div>
+        <div class="trial-time"><span id="rocket-trial-time">20</span>s</div>
+        <p class="trial-hint">Fly the rocket · bring it back to Michael · then click Done</p>
+        <button type="button" id="rocket-trial-done" class="rocket-done-btn">DONE</button>
+      </div>
+    </div>
+
+    <!-- Iron Man rocket cinema + transform HUD -->
+    <div id="rocket-cinema" class="hidden">
+      <div class="cinema-screen">
+        <div class="cinema-topbar">
+          <span id="cinema-title">4K+ PRO TV</span>
+          <span class="cinema-hint"><kbd>U</kbd> close · <kbd>1</kbd>–<kbd>4</kbd> shows · <kbd>5</kbd>/<kbd>6</kbd>/<kbd>7</kbd> transform</span>
+        </div>
+        <canvas id="cinema-canvas" width="1280" height="720"></canvas>
+        <div class="cinema-channels">
+          <button type="button" data-show="spiderman">1 Spider-Man</button>
+          <button type="button" data-show="toystory">2 Toy Story</button>
+          <button type="button" data-show="avengers">3 Avengers</button>
+          <button type="button" data-show="terminator">4 Terminator 2 Poster</button>
+          <button type="button" id="earth-return-btn" class="earth-return-btn" title="Fly back to Earth">Y · Fly Home to Earth</button>
+        </div>
+        <div class="cinema-transform">
+          <button type="button" data-skin="red">7 Red Iron Man</button>
+          <button type="button" data-skin="white">5 White Rocket</button>
+          <button type="button" data-skin="purple">6 Purple Rocket</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Player speech bubble (world-projected in JS) -->
+    <div id="speech-bubble" class="hidden">…</div>
+
+    <!-- Hotbar (blocks / tools) -->
+    <div id="hotbar">
+      <div class="slot selected" data-slot="1"><span class="slot-key">1</span><span class="slot-icon">🧱</span></div>
+      <div class="slot" data-slot="2"><span class="slot-key">2</span><span class="slot-icon">🪵</span></div>
+      <div class="slot" data-slot="3"><span class="slot-key">3</span><span class="slot-icon">💎</span></div>
+      <div class="slot" data-slot="4"><span class="slot-key">4</span><span class="slot-icon">✋</span></div>
+      <div class="slot nifty-slot" data-slot="8" title="Nifty Fidget Power"><span class="slot-key">8</span><span class="slot-icon">🌪️</span></div>
+      <div class="slot nifty-slot" data-slot="9" title="Venom"><span class="slot-key">9</span><span class="slot-icon">🐍</span></div>
+      <div class="slot nifty-slot" data-slot="0" title="Water Dino"><span class="slot-key">0</span><span class="slot-icon">🦕</span></div>
+    </div>
+
+    <!-- Controls help -->
+    <div id="controls-help">
+      <b>WASD</b> move · <b>I</b> inventory · <b>Z</b> sleep · <b>M</b> calendar · <b>U</b> Iron Man TV<br />
+      You are <b id="you-are-name">Ron</b> · 🌪️ fidget bundle @ AVENGERS SERVER (hangar) · <b>8</b>/<b>9</b>/<b>0</b> equip
+    </div>
+
+    <!-- Pause menu -->
+    <div id="pause-menu" class="hidden">
+      <div class="pause-card">
+        <h2>PAUSED</h2>
+        <p>The world is waiting for you.</p>
+        <button id="resume-btn" class="mega-btn small">RESUME</button>
+        <div class="pause-stats">
+          <div>Kills: <span id="p-kills">0</span></div>
+          <div>Blocks Built: <span id="p-built">0</span></div>
+          <div>Races Won: <span id="p-races">0</span></div>
+          <div>Distance: <span id="p-dist">0</span>m</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Race overlay -->
+    <div id="race-hud" class="hidden">
+      <div id="race-timer">0:00.00</div>
+      <div id="race-checkpoint">CHECKPOINT 0/5</div>
+      <div id="race-countdown" class="hidden">3</div>
+    </div>
+  </div>
+
+  <!-- Flight picture overlay (outside game-root so it always shows on top) -->
+  <div id="toystory-loading" class="hidden" aria-live="polite">
+    <div class="ts-load-bg">
+      <img id="ts-load-art" src="assets/toystory-space-loading.jpg" alt="Your character flying" />
+      <canvas id="ts-load-canvas" width="1280" height="720" aria-hidden="true"></canvas>
+      <div class="ts-load-vignette"></div>
+      <div class="ts-load-ui">
+        <div class="ts-load-title">TOY STORY MODE</div>
+        <div class="ts-load-sub">Your character flying up… joining the <strong>Avengers</strong></div>
+        <div class="ts-load-bar-wrap">
+          <div id="ts-load-bar" class="ts-load-bar"></div>
+        </div>
+        <div class="ts-load-timer"><span id="ts-load-sec">11</span>s</div>
+      </div>
+    </div>
+  </div>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+  <script type="module" src="game.js?v=ship-1"></script>
+</body>
+</html>

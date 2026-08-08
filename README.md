@@ -4,11 +4,7 @@ A free browser open-world game. Explore, build, race, fight, collect coins & gem
 
 ## Play online
 
-**→ https://anubisquantumcipher.github.io/nexus-open-world/**
-
-(Or open after GitHub Pages is enabled on this repo.)
-
-## Play locally
+Open the GitHub Pages link for this repo (once enabled), or:
 
 ```bash
 python3 -m http.server 8765
