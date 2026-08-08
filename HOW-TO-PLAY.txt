@@ -1,0 +1,13 @@
+NEXUS — HOW TO PLAY
+===================
+
+ONLINE: open the website link shared with you.
+
+ON THIS MAC:
+1. Open Terminal
+2. cd Desktop/NEXUS-SHIP
+3. python3 -m http.server 8765
+4. Open Safari → http://localhost:8765
+5. Click PLAY
+
+Need internet once so Three.js can load from the CDN.

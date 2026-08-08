@@ -1,2 +1,38 @@
-# nexus-open-world
-NEXUS — Open World Unlimited. Free browser open-world game (Three.js).
+# NEXUS — Open World Unlimited
+
+A free browser open-world game. Explore, build, race, fight, collect coins & gems, and level up.
+
+## Play online
+
+**→ https://anubisquantumcipher.github.io/nexus-open-world/**
+
+(Or open after GitHub Pages is enabled on this repo.)
+
+## Play locally
+
+```bash
+python3 -m http.server 8765
+```
+
+Then visit **http://localhost:8765**
+
+## Controls
+
+| Key | Action |
+|-----|--------|
+| WASD | Move / drive |
+| Mouse | Look |
+| Space | Jump |
+| Shift | Sprint |
+| LMB | Shoot / break |
+| RMB | Place block |
+| 1–7 | Hotbar |
+| E | Enter / exit vehicle |
+| F | Jet / lion form |
+| ESC | Pause / free mouse |
+
+## Tech
+
+- Three.js (CDN)
+- Single-page HTML/CSS/JS
+- Works best in Safari or Chrome with internet (for Three.js CDN)
